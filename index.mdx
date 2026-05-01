@@ -1,133 +1,57 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
-icon: 'star'
+title: "Ask Nova API: AI support chatbot for SoftSUITE Novo"
+description: "Ask Nova is a FastAPI-powered RAG chatbot backend. Integrate intelligent, document-grounded support conversations into any web application."
 ---
 
-## Setting up
+Ask Nova is the AI support backend powering SoftSUITE Novo's intelligent chat assistant. It combines a FastAPI REST interface, LanceDB hybrid vector search, HuggingFace embeddings, and the Groq Llama 3.3 70B language model to deliver accurate, knowledge-grounded answers from your own document library.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Run the API locally and send your first chat request in minutes.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="API Reference" icon="code" href="/api-reference/overview">
+    Explore all endpoints: chat, reindex, and health check.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Add Documents" icon="file-arrow-up" href="/guides/adding-documents">
+    Learn how to load PDF, TXT, and Markdown files into the knowledge base.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Manage Sessions" icon="messages" href="/guides/sessions">
+    Understand how conversation history is tracked across requests.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## How it works
 
-Everything you need to create world-class documentation.
+Ask Nova uses Retrieval-Augmented Generation (RAG) to answer questions. When a user sends a message, the API retrieves the most relevant document chunks from a LanceDB vector store, then passes them as context to the Groq LLM. This ensures answers are grounded in your official documentation rather than general training data.
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+<Steps>
+  <Step title="Configure your environment">
+    Set `HF_TOKEN`, `HUGGINGFACE_API_KEY`, and `GROQ_API_KEY` in a `.env` file. See [Environment Variables](/configuration/environment) for the full list.
+  </Step>
+  <Step title="Add your documents">
+    Place PDF, TXT, or Markdown files in a `docs/` folder next to `app.py`. The API ingests them automatically on startup.
+  </Step>
+  <Step title="Start the server">
+    Run `uvicorn app:app --host 0.0.0.0 --port 8000`. The knowledge base is indexed and the API is ready.
+  </Step>
+  <Step title="Send a chat request">
+    POST to `/chat` with a `message` field. Receive a grounded answer and a `session_id` to continue the conversation.
+  </Step>
+</Steps>
 
-## Make your content agent ready
+## Key features
 
-Make your docs work for humans and AI agents alike.
-
-<Columns cols={2}>
-  <Card
-    title="Prompt component"
-    icon="robot"
-    href="/agent-ready/prompt"
-  >
-    Embed shareable AI prompts readers can copy or open in Cursor.
+<CardGroup cols={2}>
+  <Card title="Hybrid vector search" icon="magnifying-glass">
+    LanceDB combines dense embeddings and full-text search for high-recall retrieval across your document corpus.
   </Card>
-  <Card
-    title="Visibility"
-    icon="eye"
-    href="/agent-ready/visibility"
-  >
-    Show different content to humans and agents reading your docs.
+  <Card title="Persistent sessions" icon="database">
+    SQLite-backed session storage keeps conversation history across requests without any external infrastructure.
   </Card>
-  <Card
-    title="Contextual menu"
-    icon="bolt"
-    href="/agent-ready/contextual"
-  >
-    Give readers one-click access to Claude, ChatGPT, Cursor, and more.
+  <Card title="Multi-format ingestion" icon="files">
+    Ingest PDF, plain text, and Markdown files. Documents are chunked with configurable size and overlap.
   </Card>
-  <Card
-    title="AI coding tools"
-    icon="wand-magic-sparkles"
-    href="/ai-tools/claude-code"
-  >
-    Set up Claude Code, Cursor, or Windsurf with Mintlify's skill.
+  <Card title="CORS-ready" icon="globe">
+    Pre-configured CORS middleware supports direct browser-to-API calls from whitelisted frontend origins.
   </Card>
-</Columns>
-
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+</CardGroup>

@@ -1,81 +1,131 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
-icon: 'rocket'
+title: "Quickstart: run Ask Nova API and send your first chat"
+description: "Install dependencies, set environment variables, add documents to the knowledge base, and send your first chat request to Ask Nova in five steps."
 ---
 
-## Get started in three steps
+Ask Nova runs as a local FastAPI server. Once you have your API keys and at least one document in the knowledge base, the server indexes your content on startup and is ready to answer questions.
 
-Get your documentation site running locally and make your first customization.
+## Prerequisites
 
-### Step 1: Set up your local environment
+Before you begin, make sure you have:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+- **Python 3.9 or later** — check with `python --version`
+- **pip** — bundled with most Python installations
+- A **Groq API key** — get one at [console.groq.com](https://console.groq.com)
+- A **HuggingFace API key** — get one at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
 
-### Step 2: Deploy your changes
+<Steps>
+  <Step title="Clone the repository and install dependencies">
+    Clone the repository to your machine, then install all Python dependencies:
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    The key packages this installs are `fastapi`, `uvicorn`, `agno`, `lancedb`, `sentence-transformers`, and `groq`. Full versions are pinned in `requirements.txt`.
+  </Step>
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+  <Step title="Create a .env file with your API keys">
+    In the same directory as `app.py`, create a `.env` file with the following variables:
 
-### Step 3: Go live
+    ```bash
+    HF_TOKEN=your_huggingface_token
+    HUGGINGFACE_API_KEY=your_huggingface_token
+    GROQ_API_KEY=your_groq_api_key
+    ```
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+    <Note>
+      `HF_TOKEN` and `HUGGINGFACE_API_KEY` can be the same value. The server raises a `RuntimeError` on startup if either is missing.
+    </Note>
 
-## Next steps
+    To run on a non-default port, add:
 
-Now that you have your docs running, explore these key features:
+    ```bash
+    PORT=9000
+    ```
+  </Step>
+
+  <Step title="Create the docs/ folder and add documents">
+    Ask Nova answers questions from the files in the `docs/` directory next to `app.py`. Create the folder and add at least one file:
+
+    ```bash
+    mkdir docs
+    ```
+
+    Then copy your PDF, TXT, or Markdown files into it:
+
+    ```bash
+    cp your-manual.pdf docs/
+    cp faq.md docs/
+    ```
+
+    <Tip>
+      You can add files in sub-folders too — the server reads `docs/` recursively. Supported formats are `.pdf`, `.txt`, and `.md`.
+    </Tip>
+
+    The server indexes all documents automatically on startup. You can also trigger a re-index at any time without restarting — see [Adding documents](/guides/adding-documents).
+  </Step>
+
+  <Step title="Start the server">
+    Run the development server with auto-reload:
+
+    ```bash
+    uvicorn app:app --reload --host 0.0.0.0 --port 8000
+    ```
+
+    On startup you should see log lines like:
+
+    ```
+    Indexing PDF: /path/to/docs/your-manual.pdf
+    Ask Nova indexed 2 files on startup.
+    INFO:     Uvicorn running on http://0.0.0.0:8000
+    ```
+
+    <Warning>
+      If the `docs/` folder is empty or missing, startup indexing is skipped and Ask Nova will have no knowledge to draw from. It will still respond to `/chat` requests but will say the answer is not in the knowledge base.
+    </Warning>
+  </Step>
+
+  <Step title="Send your first chat request">
+    With the server running, send a test message using curl:
+
+    ```bash
+    curl -X POST http://localhost:8000/chat \
+      -H "Content-Type: application/json" \
+      -d '{"message": "What is SoftSUITE Novo?"}'
+    ```
+
+    You should receive a response like:
+
+    ```json
+    {
+      "session_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "answer": "SoftSUITE Novo is an HR management platform..."
+    }
+    ```
+
+    To continue the conversation, pass the `session_id` from the previous response back in your next request:
+
+    ```bash
+    curl -X POST http://localhost:8000/chat \
+      -H "Content-Type: application/json" \
+      -d '{
+        "message": "How do I reset my password?",
+        "session_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      }'
+    ```
+
+    The API keeps the last three conversation turns in context, so follow-up questions work as expected. Session history is stored in SQLite at `.api_agent_data/sessions.db`.
+  </Step>
+</Steps>
+
+## What's next
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Environment variables" icon="gear" href="/configuration/environment">
+    See the full list of supported environment variables and their defaults.
+  </Card>
+  <Card title="Adding documents" icon="file-arrow-up" href="/guides/adding-documents">
+    Learn how to structure your document library and trigger a live re-index.
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

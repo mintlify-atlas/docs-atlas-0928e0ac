@@ -1,0 +1,34 @@
+---
+title: "GET /health — verify the Ask Nova API process is running"
+description: "GET /health returns a static JSON status object. Use it for load balancer health checks, liveness probes, and uptime monitoring integrations."
+---
+
+Check whether the Ask Nova API process is running. This endpoint responds immediately with a static `"ok"` status and is designed for use with load balancers, uptime monitors, and container orchestrators such as Kubernetes liveness probes.
+
+## Request parameters
+
+None. No query parameters, headers, or request body are required.
+
+## Response
+
+<ResponseField name="status" type="string">
+  Always `"ok"` when the API is running.
+</ResponseField>
+
+## Example
+
+```bash
+curl http://localhost:8000/health
+```
+
+### Response example
+
+```json
+{
+  "status": "ok"
+}
+```
+
+<Note>
+  This endpoint always returns HTTP 200 if the server process is running. It does not verify LanceDB connectivity, LLM availability, or whether the knowledge base has been indexed. A 200 response confirms the process is alive, not that all downstream dependencies are healthy.
+</Note>

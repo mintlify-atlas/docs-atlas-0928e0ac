@@ -1,0 +1,54 @@
+---
+title: "Configure Ask Nova API using environment variables"
+description: "Configure Ask Nova with three required API keys: HF_TOKEN for HuggingFace embeddings, GROQ_API_KEY for the LLM, and an optional PORT binding."
+---
+
+Ask Nova reads its configuration from environment variables, which you can supply directly in your shell or through a `.env` file in the same directory as `app.py`. The application uses [python-dotenv](https://pypi.org/project/python-dotenv/) to load that file automatically on startup, so no extra setup is required beyond creating the file.
+
+## Example .env file
+
+Create a `.env` file next to `app.py` and populate it with your credentials:
+
+```text .env
+HF_TOKEN=hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+HUGGINGFACE_API_KEY=hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+PORT=8000
+```
+
+<Warning>
+  The server will refuse to start if `HF_TOKEN` or `GROQ_API_KEY` are missing. Both are validated at import time and raise a `RuntimeError` before any routes are registered.
+</Warning>
+
+## Variable reference
+
+<ParamField path="HF_TOKEN" type="string" required>
+  HuggingFace API token used to authenticate requests to the embedding model. Get yours at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens).
+</ParamField>
+
+<ParamField path="HUGGINGFACE_API_KEY" type="string">
+  Explicit HuggingFace API key passed to the embedder client. Falls back to `HF_TOKEN` if not set, so you only need to add this variable when you want to use a different key for the embedding calls specifically.
+</ParamField>
+
+<ParamField path="GROQ_API_KEY" type="string" required>
+  Groq API key for accessing the Llama 3.3 70B model used to generate chat responses. Get yours at [console.groq.com](https://console.groq.com).
+</ParamField>
+
+<ParamField path="PORT" type="integer" default="8000">
+  The port on which the Uvicorn server listens. Only relevant when running `app.py` directly via `python app.py`; when using an external process manager or container platform, set the port through that system instead.
+</ParamField>
+
+## Getting your API keys
+
+<CardGroup cols={2}>
+  <Card title="HuggingFace token" icon="key" href="https://huggingface.co/settings/tokens">
+    Sign in to HuggingFace and create a read-scoped token under **Settings → Access Tokens**.
+  </Card>
+  <Card title="Groq API key" icon="key" href="https://console.groq.com">
+    Sign in to the Groq console and generate a new API key from the **API Keys** section.
+  </Card>
+</CardGroup>
+
+<Note>
+  Keep your `.env` file out of version control. Add it to `.gitignore` to avoid accidentally committing credentials to your repository.
+</Note>

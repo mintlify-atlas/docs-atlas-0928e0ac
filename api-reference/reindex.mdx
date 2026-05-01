@@ -1,0 +1,45 @@
+---
+title: "POST /reindex — re-ingest all documents into LanceDB"
+description: "POST /reindex re-ingests all documents from the docs/ folder into LanceDB. Returns the number of files indexed. No request body required."
+---
+
+Trigger a re-ingestion of all documents in the `docs/` folder. Ask Nova reads every `.pdf`, `.txt`, and `.md` file in that directory, chunks each one, embeds the chunks, and stores them in LanceDB. Call this endpoint after adding, updating, or removing documents to bring the knowledge base up to date without restarting the server.
+
+## Request body
+
+No request body is required. Send the request with no body or an empty JSON object.
+
+## Response
+
+<ResponseField name="status" type="string">
+  Always `"ok"` on success.
+</ResponseField>
+
+<ResponseField name="files_indexed" type="integer">
+  Number of files successfully indexed in this run. Files that failed to parse are skipped and not counted.
+</ResponseField>
+
+## Example
+
+```bash
+curl -X POST http://localhost:8000/reindex
+```
+
+### Response example
+
+```json
+{
+  "status": "ok",
+  "files_indexed": 5
+}
+```
+
+## Errors
+
+| Status | Body | Cause |
+|--------|------|-------|
+| 500 | `{"detail": "Reindex failed: <error>"}` | The `docs/` folder was not found or an unexpected error occurred |
+
+<Warning>
+  Reindex appends new vectors to the existing LanceDB table without removing old ones. If you re-add the same files, you will accumulate duplicate vectors, which can degrade answer quality. To do a clean reindex, delete the `.api_agent_data/lancedb/` directory before calling this endpoint.
+</Warning>

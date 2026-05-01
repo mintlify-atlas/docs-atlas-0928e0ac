@@ -1,0 +1,114 @@
+---
+title: "Knowledge base: documents, chunking, and vector store"
+description: "Ask Nova reads documents from a local docs/ folder, embeds them with sentence-transformers, and stores vectors in LanceDB for hybrid retrieval at query time."
+---
+
+Ask Nova builds its knowledge base from documents you place in a `docs/` folder next to `app.py`. On startup the application scans that folder recursively, splits each file into chunks, generates vector embeddings, and stores them in a local LanceDB database. All of this happens automatically — no manual indexing step is required before the first request.
+
+## Directory structure
+
+Place your source documents inside the `docs/` folder. Subdirectories are supported. The `.api_agent_data/` folder is created automatically and should not be edited by hand.
+
+```text
+your-project/
+├── app.py
+├── docs/              ← place your documents here
+│   ├── user-guide.pdf
+│   ├── faq.md
+│   └── policies/
+│       └── hr-policy.txt
+└── .api_agent_data/   ← auto-created, stores DB files
+    ├── lancedb/
+    └── sessions.db
+```
+
+<Note>
+  The `docs/` folder is resolved relative to `app.py`, not to your current working directory. If you run the server from a different location, the path still points to the folder next to the script.
+</Note>
+
+## Supported file formats
+
+Ask Nova indexes three file types. Files with any other extension are silently skipped.
+
+<CardGroup cols={3}>
+  <Card title="PDF" icon="file-pdf">
+    `.pdf` files are parsed with `PDFReader`. Multi-page documents are fully supported.
+  </Card>
+  <Card title="Plain text" icon="file-lines">
+    `.txt` files are read as UTF-8 plain text with `TextReader`.
+  </Card>
+  <Card title="Markdown" icon="file">
+    `.md` files are also handled by `TextReader`. Markdown syntax is treated as plain text.
+  </Card>
+</CardGroup>
+
+## Chunking
+
+Documents are split into fixed-size chunks before embedding. This keeps each chunk within the context window of the embedding model and improves retrieval precision.
+
+| Setting | Value |
+| --- | --- |
+| Strategy | `FixedSizeChunking` |
+| Chunk size | 500 tokens |
+| Overlap | 50 tokens |
+
+The 50-token overlap ensures that content near a chunk boundary appears in at least two consecutive chunks, reducing the chance of a relevant sentence being split across a retrieval boundary.
+
+## Embedding model
+
+Chunks are embedded using the `sentence-transformers/all-MiniLM-L6-v2` model hosted on HuggingFace Inference. The model produces 384-dimensional dense vectors.
+
+| Setting | Value |
+| --- | --- |
+| Model ID | `sentence-transformers/all-MiniLM-L6-v2` |
+| Dimensions | 384 |
+| Authentication | `HUGGINGFACE_API_KEY` (falls back to `HF_TOKEN`) |
+
+## Vector database
+
+Embeddings are stored in a local [LanceDB](https://lancedb.github.io/lancedb/) database. No external database service is required.
+
+| Setting | Value |
+| --- | --- |
+| URI | `.api_agent_data/lancedb` |
+| Table name | `ask_nova_docs` |
+| Search type | Hybrid (dense vectors + BM25 full-text) |
+
+Hybrid search combines semantic similarity (dense embeddings) with keyword matching (BM25) so that both conceptual and exact-term queries return accurate results.
+
+## Session storage
+
+Chat session history is stored separately in a SQLite database at `.api_agent_data/sessions.db`. This file is also created automatically and is independent of the document index.
+
+## Indexing on startup
+
+When the server starts, `ingest_documents()` is called automatically inside the `startup` event handler. Every file in `docs/` is scanned, chunked, embedded, and inserted into LanceDB before the first request is served.
+
+<Note>
+  Recursive scanning uses Python's `rglob("*")`, so documents in nested subdirectories inside `docs/` are indexed without any extra configuration.
+</Note>
+
+## Re-indexing without restart
+
+If you add, update, or remove documents while the server is running, send a `POST /reindex` request to trigger a fresh ingestion pass:
+
+```bash
+curl -X POST http://localhost:8000/reindex
+```
+
+A successful response confirms how many files were processed:
+
+```json
+{
+  "status": "ok",
+  "files_indexed": 4
+}
+```
+
+<Tip>
+  Reindexing **appends** new vectors to the existing table rather than replacing them. If you are re-adding files that were already indexed, clear the old vectors from the LanceDB table first to avoid duplicate results in retrieval.
+</Tip>
+
+<Warning>
+  If the `docs/` folder does not exist when indexing runs, the server logs a `FileNotFoundError` and skips indexing entirely. Create the folder and add at least one document before starting the server.
+</Warning>

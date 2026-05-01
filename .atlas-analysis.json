@@ -1,21 +1,11 @@
 {
-  "$schema": "https://mintlify.com/docs.json",
-  "name": "Ask Nova API",
+  "projectType": "api-service",
+  "projectName": "Ask Nova API",
+  "projectDescription": "A FastAPI-powered AI support chatbot backend for SoftSUITE Novo, using RAG (Retrieval-Augmented Generation) with LanceDB, HuggingFace embeddings, and Groq LLM to answer questions from a document knowledge base.",
   "theme": "luma",
-  "colors": {
-    "primary": "#6C47FF"
-  },
-  "navbar": {
-    "primary": {
-      "type": "github",
-      "href": "https://github.com/Mowa-Gabriels/avon"
-    }
-  },
-  "footer": {
-    "socials": {
-      "github": "https://github.com/Mowa-Gabriels/avon"
-    }
-  },
+  "primaryColor": "#6C47FF",
+  "lightColor": null,
+  "darkColor": null,
   "navigation": {
     "tabs": [
       {
@@ -24,7 +14,6 @@
           {
             "group": "Get Started",
             "pages": [
-              "index",
               "introduction",
               "quickstart"
             ]
@@ -61,5 +50,22 @@
         ]
       }
     ]
-  }
+  },
+  "keyFeatures": [
+    "RAG-based chatbot powered by Groq Llama 3.3 70B",
+    "HuggingFace sentence-transformers embeddings (all-MiniLM-L6-v2)",
+    "Hybrid vector search with LanceDB",
+    "PDF, TXT, and Markdown document ingestion",
+    "Persistent conversation sessions via SQLite",
+    "CORS-enabled for web frontend integration",
+    "On-startup and on-demand document reindexing"
+  ],
+  "publicApiSurface": [
+    "GET /health",
+    "POST /chat",
+    "POST /reindex",
+    "ChatRequest (message, session_id, user_id)",
+    "ChatResponse (session_id, answer)",
+    "ReindexResponse (status, files_indexed)"
+  ]
 }

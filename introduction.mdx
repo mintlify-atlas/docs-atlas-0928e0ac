@@ -1,0 +1,65 @@
+---
+title: "Ask Nova: RAG-powered support API for SoftSUITE Novo"
+description: "Ask Nova is a FastAPI chatbot backend that grounds every answer in your document library using LanceDB hybrid search and Groq Llama 3.3 70B."
+---
+
+Ask Nova is the AI support backend for SoftSUITE Novo. It exposes a simple REST API that accepts plain-text questions and returns accurate, document-grounded answers — no hallucinations, no invented workflows. Every response is drawn from the official documentation you provide, making it safe to deploy as a customer-facing support assistant.
+
+## How the RAG pipeline works
+
+Ask Nova uses Retrieval-Augmented Generation (RAG) to connect user questions to your document library before the language model ever produces a word.
+
+When a request arrives at `POST /chat`, the pipeline runs in four stages:
+
+1. **Embed the question** — the HuggingFace `sentence-transformers/all-MiniLM-L6-v2` model converts the user's message into a 384-dimensional vector.
+2. **Retrieve relevant chunks** — LanceDB runs a hybrid search (dense vector + full-text) against the indexed document corpus and returns the most relevant 500-token chunks.
+3. **Build context** — the retrieved chunks and the last three conversation turns are assembled into a prompt.
+4. **Generate an answer** — Groq's `llama-3.3-70b-versatile` model (temperature 0.1, max 2 048 tokens) produces a grounded, conversational response.
+
+The answer and the `session_id` are returned to the caller. Pass the same `session_id` on the next request to continue the conversation.
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Hybrid vector search" icon="magnifying-glass">
+    LanceDB combines dense embeddings and full-text search for high-recall retrieval across your document corpus, stored at `.api_agent_data/lancedb`.
+  </Card>
+  <Card title="Groq Llama 3.3 70B" icon="bolt">
+    Low-latency inference via Groq's hosted API. Temperature 0.1 keeps answers factual; max 2 048 tokens handles detailed support responses.
+  </Card>
+  <Card title="Persistent sessions" icon="database">
+    SQLite at `.api_agent_data/sessions.db` stores conversation history. Clients reuse a `session_id` UUID to maintain context across requests.
+  </Card>
+  <Card title="Multi-format ingestion" icon="files">
+    Drop PDF, TXT, or Markdown files into the `docs/` folder. Fixed-size chunking (500 tokens, 50-token overlap) keeps retrieval consistent.
+  </Card>
+  <Card title="CORS-ready" icon="globe">
+    Pre-configured origins include `localhost:5173`, `localhost:5500`, and the SoftSUITE production domains for direct browser-to-API calls.
+  </Card>
+  <Card title="Live reindexing" icon="arrows-rotate">
+    `POST /reindex` re-ingests the `docs/` folder at runtime without restarting the server — useful when you add or update documents.
+  </Card>
+</CardGroup>
+
+## Architecture overview
+
+Ask Nova is a single-file FastAPI application (`app.py`) with no external services beyond the Groq and HuggingFace APIs.
+
+| Component | Technology | Location |
+|---|---|---|
+| API framework | FastAPI 0.135 | `app.py` |
+| Embeddings | HuggingFace `all-MiniLM-L6-v2` | HuggingFace Inference API |
+| Vector store | LanceDB 0.30 | `.api_agent_data/lancedb` |
+| LLM | Groq `llama-3.3-70b-versatile` | Groq API |
+| Session storage | SQLite | `.api_agent_data/sessions.db` |
+| Documents | PDF, TXT, MD | `docs/` |
+
+<Note>
+  Ask Nova only answers from documents in the `docs/` folder. If the knowledge base is empty or the answer is not supported by the retrieved chunks, the assistant says so explicitly rather than guessing.
+</Note>
+
+## Next steps
+
+<Card title="Get started" icon="rocket" href="/quickstart">
+  Install dependencies, configure your environment, and send your first chat request in five steps.
+</Card>

@@ -1,0 +1,87 @@
+---
+title: "Add and reindex documents in the Ask Nova knowledge base"
+description: "Load PDF, TXT, and Markdown files into Ask Nova's LanceDB vector store. Documents are indexed automatically on startup or on demand via POST /reindex."
+---
+
+Ask Nova answers questions by retrieving relevant content from a local vector store. You populate that store by placing documents in the `docs/` folder next to `app.py`. On every startup, Ask Nova scans that folder recursively and indexes every supported file it finds.
+
+## Supported file formats
+
+| Format | Extension | Notes |
+|--------|-----------|-------|
+| PDF | `.pdf` | Text is extracted page-by-page using `PDFReader` |
+| Plain text | `.txt` | Indexed as-is using `TextReader` |
+| Markdown | `.md` | Indexed as-is using `TextReader` |
+
+<Note>
+Files that fail to index are logged and skipped. A single bad file does not prevent the rest from indexing or the server from starting.
+</Note>
+
+## Add documents to the knowledge base
+
+<Steps>
+  <Step title="Create the docs/ folder">
+    Create a `docs/` directory in the same location as `app.py`.
+
+    ```bash
+    mkdir docs
+    ```
+  </Step>
+
+  <Step title="Add your files">
+    Copy your PDF, TXT, or Markdown files into `docs/`. You can organize them in subfolders — Ask Nova scans recursively.
+
+    ```text
+    docs/
+    ├── user-guide.pdf
+    ├── faq.md
+    └── policies/
+        └── leave-policy.txt
+    ```
+
+    <Tip>
+      Subfolders are fully supported. Use them to organize documents by topic, product area, or audience — Ask Nova will find and index everything under `docs/` regardless of nesting depth.
+    </Tip>
+  </Step>
+
+  <Step title="Start the server">
+    Start Ask Nova as you normally would. Document ingestion runs automatically during the startup event before the API begins accepting requests.
+
+    ```bash
+    uvicorn app:app --host 0.0.0.0 --port 8000 --workers 1
+    ```
+
+    The server logs a line for each file it indexes:
+
+    ```text
+    Indexing PDF: /path/to/docs/user-guide.pdf
+    Indexing text: /path/to/docs/faq.md
+    Ask Nova indexed 2 files on startup.
+    ```
+  </Step>
+</Steps>
+
+## File naming best practices
+
+- Use descriptive, lowercase names that reflect the content: `leave-policy-2024.pdf` rather than `doc1.pdf`.
+- Avoid spaces and special characters in filenames. Use hyphens (`-`) or underscores (`_`) as separators.
+- Do not use characters such as `#`, `&`, `%`, `?`, or `+` in filenames — these can cause path handling issues on some systems.
+- Keep names short but meaningful. Long filenames are harder to identify in logs.
+
+## Re-index without restarting
+
+If you add, update, or remove documents while the server is already running, call the `POST /reindex` endpoint to trigger a fresh ingestion without restarting the process.
+
+```bash
+curl -X POST http://localhost:8000/reindex
+```
+
+A successful response confirms how many files were processed:
+
+```json
+{"status": "ok", "files_indexed": 3}
+```
+
+<Warning>
+Calling `POST /reindex` appends new vectors to the existing LanceDB table without removing old ones first. If you re-index the same files after modifying them, you will have duplicate vectors for the updated content, which can degrade retrieval quality. To avoid this, clear the LanceDB data directory (`.api_agent_data/lancedb/`) before re-indexing when replacing existing documents.
+</Warning>

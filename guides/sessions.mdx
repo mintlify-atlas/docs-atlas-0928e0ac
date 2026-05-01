@@ -1,0 +1,75 @@
+---
+title: "How conversation sessions work in the Ask Nova API"
+description: "Ask Nova tracks conversation history per session_id. Pass a session_id to continue a conversation, or omit it to start a new one automatically."
+---
+
+Every conversation in Ask Nova is tied to a session. A session holds the message history that Ask Nova uses to maintain context across multiple turns. When you send a message, Ask Nova includes the last three conversation turns in its context window, so it can give coherent follow-up answers without you repeating background information.
+
+## Session lifecycle
+
+Ask Nova uses UUID v4 strings as session identifiers. You control how sessions are created and reused through the `session_id` field in your request.
+
+- **New session** — omit `session_id` (or pass `null`). Ask Nova generates a UUID and returns it in the response. Save this value to continue the conversation later.
+- **Continuing a session** — pass the `session_id` from a previous response. Ask Nova loads the stored history for that session and includes it in the model's context.
+
+Sessions are stored in a SQLite database at `.api_agent_data/sessions.db`, which persists across server restarts. A session started today will still be accessible after you redeploy, as long as the data directory is preserved.
+
+## Start a new session
+
+Send a message without a `session_id`. Ask Nova assigns a new UUID automatically.
+
+```bash
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "What is SoftSUITE Novo?"}'
+```
+
+The response includes the generated `session_id`:
+
+```json
+{
+  "session_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "answer": "SoftSUITE Novo is ..."
+}
+```
+
+Store the `session_id` value. You will need it for all subsequent messages in this conversation.
+
+## Continue an existing session
+
+Pass the `session_id` from the previous response to pick up the conversation where you left off.
+
+```bash
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "How do I reset my password?", "session_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"}'
+```
+
+Ask Nova retrieves the last 3 turns of history for that session and includes them when generating its answer.
+
+## Associating sessions with your users
+
+The request body accepts an optional `user_id` field. This is a free-form string you can use to tag a session with an identifier from your own application — for example, an employee number or a user record ID.
+
+```json
+{
+  "message": "What is my leave balance?",
+  "session_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "user_id": "emp-00423"
+}
+```
+
+`user_id` is passed through to the underlying agent and stored alongside the session. Ask Nova does not use it to change how it answers — it is purely for your application's tracking purposes.
+
+## Session storage and persistence
+
+| Property | Value |
+|----------|-------|
+| Storage engine | SQLite |
+| Database file | `.api_agent_data/sessions.db` |
+| History depth | Last 3 conversation turns |
+| Persistence | Survives server restarts |
+
+<Note>
+Sessions persist as long as the `.api_agent_data/` directory exists on disk. If you delete this directory or move the server to a new machine without copying the data, all session history is lost and existing `session_id` values will no longer resolve to any history.
+</Note>

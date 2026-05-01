@@ -1,0 +1,143 @@
+---
+title: "Deploy the Ask Nova API with uvicorn in production"
+description: "Deploy the Ask Nova FastAPI server with uvicorn. Configure environment variables, manage the docs/ folder, and expose the API to your frontend."
+---
+
+Ask Nova runs as a standard FastAPI application served by uvicorn. This guide covers what you need to get it running reliably in a production environment: prerequisites, the startup command, environment variables, CORS configuration, and process management.
+
+## Prerequisites
+
+Before starting the server, make sure you have the following in place:
+
+<CardGroup cols={2}>
+  <Card title="Runtime" icon="python">
+    Python 3.9 or later, with all dependencies from `requirements.txt` installed.
+  </Card>
+  <Card title="API keys" icon="key">
+    Valid `HF_TOKEN` (or `HUGGINGFACE_API_KEY`) and `GROQ_API_KEY` set as environment variables. The server will not start without them.
+  </Card>
+  <Card title="Documents" icon="file">
+    A `docs/` folder next to `app.py`, populated with at least one supported file. The folder must exist before startup — Ask Nova raises an error if it is missing.
+  </Card>
+  <Card title="pip dependencies" icon="box">
+    Install dependencies with `pip install -r requirements.txt` before running the server for the first time.
+  </Card>
+</CardGroup>
+
+## Start the server
+
+Use uvicorn to start Ask Nova in production:
+
+```bash
+uvicorn app:app --host 0.0.0.0 --port 8000 --workers 1
+```
+
+<Warning>
+Always use `--workers 1`. The knowledge base and the agent are module-level singletons initialized once at import time. Running multiple worker processes causes each worker to hold its own in-memory state, which leads to inconsistent behavior and potential data conflicts in the shared LanceDB store.
+</Warning>
+
+The `PORT` environment variable is read when running the server via `python app.py` directly. When using the uvicorn CLI, pass the port explicitly with `--port`.
+
+## Environment variables
+
+Ask Nova reads its configuration from environment variables. See the [environment configuration](/configuration/environment) reference for the full list of required and optional variables.
+
+At minimum, you must set:
+
+```text
+HF_TOKEN=your_huggingface_token
+GROQ_API_KEY=your_groq_api_key
+PORT=8000
+```
+
+Place these in a `.env` file next to `app.py`, or inject them through your deployment platform's secrets management. The server calls `load_dotenv()` on startup and will pick up a `.env` file automatically.
+
+## CORS configuration
+
+The list of allowed frontend origins is hardcoded in `app.py`. The following origins are permitted:
+
+```text
+http://127.0.0.1:5500
+http://localhost:5500
+http://127.0.0.1:5173
+http://localhost:5173
+https://ask-nova-ten.vercel.app
+https://dev.softsuite.com
+https://hcm.softsuite.com
+https://hcmtest.softsuite.com
+https://softsuite.com
+```
+
+To allow requests from a new frontend origin, add it to the `allow_origins` list in `app.py` and redeploy.
+
+<Note>
+`allow_credentials` is set to `False`. Browsers will not include cookies or `Authorization` headers from cross-origin requests. If your frontend needs to send credentials, you will need to change this setting and update the `allow_origins` list accordingly (wildcards are not permitted when credentials are enabled).
+</Note>
+
+## Health check
+
+Ask Nova exposes a health check endpoint for use with load balancers and uptime monitors:
+
+```bash
+curl http://localhost:8000/health
+```
+
+```json
+{"status": "ok"}
+```
+
+Configure your load balancer or container orchestrator to poll `GET /health`. A `200` response with `{"status": "ok"}` indicates the server is ready to accept requests.
+
+## Data directory
+
+Ask Nova auto-creates a `.api_agent_data/` directory next to `app.py` on first run. This directory contains:
+
+```text
+.api_agent_data/
+├── lancedb/        # Vector store (document embeddings)
+└── sessions.db     # SQLite conversation history
+```
+
+Both the LanceDB store and the SQLite database persist across restarts. Back up this directory if you need to preserve indexed documents and session history between deployments or server migrations.
+
+## docs/ folder
+
+The `docs/` folder must exist and contain at least one supported file before the server starts. Its path is resolved relative to `app.py`. Ask Nova scans it recursively on startup and re-indexes every supported file.
+
+If you update documents between deployments, copy the new files into `docs/` before restarting the server, or use the [`POST /reindex`](/guides/adding-documents#re-index-without-restarting) endpoint after the server is running.
+
+## Process management
+
+Use a process manager to keep Ask Nova running after you log out and to restart it automatically if it crashes.
+
+<CodeGroup>
+
+```ini systemd (ask-nova.service)
+[Unit]
+Description=Ask Nova API
+After=network.target
+
+[Service]
+WorkingDirectory=/path/to/app
+ExecStart=/path/to/venv/bin/uvicorn app:app --host 0.0.0.0 --port 8000 --workers 1
+Restart=on-failure
+EnvironmentFile=/path/to/app/.env
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```ini supervisord (ask-nova.conf)
+[program:ask-nova]
+command=/path/to/venv/bin/uvicorn app:app --host 0.0.0.0 --port 8000 --workers 1
+directory=/path/to/app
+autostart=true
+autorestart=true
+environment=HF_TOKEN="%(ENV_HF_TOKEN)s",GROQ_API_KEY="%(ENV_GROQ_API_KEY)s"
+```
+
+</CodeGroup>
+
+<Tip>
+Point the `WorkingDirectory` (systemd) or `directory` (supervisord) to the folder containing `app.py`. Ask Nova resolves the `docs/` and `.api_agent_data/` paths relative to its own location, so the working directory must be set correctly for those paths to resolve.
+</Tip>

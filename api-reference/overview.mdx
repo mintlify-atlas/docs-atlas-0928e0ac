@@ -1,0 +1,60 @@
+---
+title: "Ask Nova REST API: endpoints, auth, and error format"
+description: "Ask Nova exposes three REST endpoints over HTTP. All request bodies use JSON. No authentication is required — secure via network controls or a reverse proxy."
+---
+
+Ask Nova is a FastAPI-based RAG chatbot backend for SoftSUITE Novo. It exposes three HTTP endpoints for chatting with the knowledge base, reloading documents, and checking service health. All endpoints run on the same host and port — `http://localhost:8000` by default, or your deployment host in production.
+
+## Base URL
+
+```text
+http://localhost:8000
+```
+
+Replace `localhost:8000` with your deployment host and port in production.
+
+## Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | /health | Returns API health status |
+| POST | /chat | Send a message and receive a grounded answer |
+| POST | /reindex | Re-ingest documents from the docs/ folder |
+
+## Authentication
+
+Ask Nova does not include built-in authentication. No API keys or tokens are required to call any endpoint. In production, secure the API using one of the following approaches:
+
+- A reverse proxy (nginx, Caddy, Traefik) with IP allowlisting or basic auth
+- Network-level controls such as a private VPC, firewall rules, or a service mesh
+- An API gateway that adds token validation in front of the service
+
+## Content-Type
+
+All POST requests must include `Content-Type: application/json` and a valid JSON body.
+
+## Error format
+
+When a request fails, the API returns HTTP 500 with a JSON body in this shape:
+
+```json
+{
+  "detail": "<error message>"
+}
+```
+
+The `detail` field contains a human-readable description of what went wrong.
+
+## Endpoint pages
+
+<CardGroup cols={3}>
+  <Card title="POST /chat" icon="message" href="/api-reference/chat">
+    Send a user message and receive a grounded answer from the knowledge base.
+  </Card>
+  <Card title="POST /reindex" icon="rotate" href="/api-reference/reindex">
+    Re-ingest all documents from the docs/ folder into LanceDB.
+  </Card>
+  <Card title="GET /health" icon="heart-pulse" href="/api-reference/health">
+    Check that the API process is running.
+  </Card>
+</CardGroup>

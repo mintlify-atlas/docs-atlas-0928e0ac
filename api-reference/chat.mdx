@@ -1,0 +1,70 @@
+---
+title: "POST /chat — send a message and get a grounded answer"
+description: "POST /chat accepts a user message and optional session_id. Returns a grounded answer and a session_id for continuing the conversation."
+---
+
+Send a user message to the Ask Nova agent. The agent searches the knowledge base, grounds its answer in the retrieved documents, and returns a plain-text response. Pass a `session_id` from a previous response to continue an existing conversation; omit it to start a fresh one.
+
+## Request body
+
+<ParamField body="message" type="string" required>
+  The user's question or message. Must be at least 1 character.
+</ParamField>
+
+<ParamField body="session_id" type="string">
+  Pass an existing session ID to continue a conversation. If omitted, a new UUID is generated and returned in the response.
+</ParamField>
+
+<ParamField body="user_id" type="string">
+  An application-level user identifier for your own tracking. Not used by the agent internally.
+</ParamField>
+
+## Response
+
+<ResponseField name="session_id" type="string">
+  The session ID for this conversation. Save this value and pass it in subsequent requests to maintain conversation history.
+</ResponseField>
+
+<ResponseField name="answer" type="string">
+  The agent's response grounded in the knowledge base.
+</ResponseField>
+
+<Note>
+  If the answer is not supported by the knowledge base, Ask Nova will say so plainly rather than invent an answer. It will not hallucinate workflows, policies, or product behaviour.
+</Note>
+
+## Examples
+
+<CodeGroup>
+
+```bash New session
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "How do I apply for leave in SoftSUITE Novo?"}'
+```
+
+```bash Continue a session
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "What documents do I need to attach?",
+    "session_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+  }'
+```
+
+</CodeGroup>
+
+### Response example
+
+```json
+{
+  "session_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "answer": "To apply for leave, navigate to the Leave Management module..."
+}
+```
+
+## Errors
+
+| Status | Body | Cause |
+|--------|------|-------|
+| 500 | `{"detail": "Chat failed: <error>"}` | An unexpected error occurred in the agent or knowledge base |
